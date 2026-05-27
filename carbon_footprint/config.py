@@ -51,7 +51,7 @@ class Config:
     MAIL_DEFAULT_SENDER = os.environ.get("MAIL_USERNAME", "")
 
     CO2_FACTORS = {
-        "car_petrol":       0.21,
+        "car_petrol":       0.23,
         "car_diesel":       0.17,
         "two_wheeler":      0.08,
         "electricity":      0.82,
