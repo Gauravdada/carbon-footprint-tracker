@@ -1,0 +1,414 @@
+{% extends "base.html" %}
+{% block title %}Feed — Carbon Footprint{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* ── Page layout ── */
+  .feed-page { max-width: 680px; margin: 0 auto; padding: 1rem 1rem 6rem; }
+
+  /* ── City selector bar ── */
+  .city-bar {
+    background: var(--color-surface, #fff);
+    border-radius: 16px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .city-bar label { font-size: 0.85rem; color: #666; white-space: nowrap; }
+  .city-search-wrap { position: relative; flex: 1; }
+  .city-input {
+    width: 100%;
+    padding: 8px 14px;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+  }
+  .city-input:focus { border-color: #2d6a4f; }
+  .city-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0; right: 0;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    max-height: 220px;
+    overflow-y: auto;
+    z-index: 100;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    display: none;
+  }
+  .city-dropdown.open { display: block; }
+  .city-option {
+    padding: 9px 14px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .city-option:hover, .city-option.highlighted { background: #e8f5e9; color: #2d6a4f; }
+  .city-btn {
+    padding: 8px 18px;
+    background: #2d6a4f;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s;
+  }
+  .city-btn:hover { background: #1b4332; }
+
+  /* ── News card ── */
+  .news-stage {
+    position: relative;
+    min-height: 420px;
+  }
+  .news-card {
+    background: #fff;
+    border-radius: 20px;
+    padding: 2rem;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+    display: none;
+    animation: slideIn 0.35s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .news-card.active { display: block; }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* card accent colours */
+  .card-red    .card-accent { background: linear-gradient(135deg,#ff6b6b,#ee5a24); }
+  .card-orange .card-accent { background: linear-gradient(135deg,#ffa94d,#f76707); }
+  .card-yellow .card-accent { background: linear-gradient(135deg,#ffe066,#f59f00); }
+  .card-blue   .card-accent { background: linear-gradient(135deg,#74c0fc,#1971c2); }
+  .card-green  .card-accent { background: linear-gradient(135deg,#69db7c,#2f9e44); }
+  .card-red    { border-top: 4px solid #ee5a24; }
+  .card-orange { border-top: 4px solid #f76707; }
+  .card-yellow { border-top: 4px solid #f59f00; }
+  .card-blue   { border-top: 4px solid #1971c2; }
+  .card-green  { border-top: 4px solid #2f9e44; }
+
+  .card-icon { font-size: 2.8rem; margin-bottom: 0.6rem; display: block; }
+  .card-stat {
+    display: inline-block;
+    background: #f0fdf4;
+    color: #2d6a4f;
+    border: 1px solid #bbf7d0;
+    border-radius: 999px;
+    padding: 3px 14px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    margin-bottom: 0.8rem;
+  }
+  .card-title { font-size: 1.35rem; font-weight: 700; color: #1a1a1a; margin-bottom: 0.7rem; line-height: 1.3; }
+  .card-body  { font-size: 0.95rem; color: #444; line-height: 1.7; margin-bottom: 1rem; }
+  .card-source { font-size: 0.78rem; color: #999; }
+  .card-num {
+    position: absolute;
+    top: 1.2rem; right: 1.4rem;
+    font-size: 0.78rem; color: #bbb; font-weight: 500;
+  }
+
+  /* ── Navigation ── */
+  .nav-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1.4rem;
+  }
+  .nav-btn {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    border: 2px solid #2d6a4f;
+    background: #fff;
+    color: #2d6a4f;
+    font-size: 1.3rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+    user-select: none;
+  }
+  .nav-btn:hover:not(:disabled) { background: #2d6a4f; color: #fff; }
+  .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .nav-dots { display: flex; gap: 6px; align-items: center; }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #ddd; transition: background 0.2s, transform 0.2s;
+  }
+  .dot.active { background: #2d6a4f; transform: scale(1.3); }
+
+  /* ── Loading skeleton ── */
+  .skeleton-card {
+    background: #fff;
+    border-radius: 20px;
+    padding: 2rem;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  }
+  .skel { background: linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);
+    background-size: 200% 100%; animation: shimmer 1.2s infinite; border-radius: 8px; }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .skel-icon  { width:50px; height:50px; border-radius:50%; margin-bottom:12px; }
+  .skel-stat  { width:120px; height:22px; margin-bottom:14px; border-radius:999px; }
+  .skel-title { width:85%; height:28px; margin-bottom:10px; }
+  .skel-line  { width:100%; height:14px; margin-bottom:8px; }
+  .skel-line.short { width:70%; }
+
+  /* ── Keyboard hint ── */
+  .key-hint {
+    text-align: center;
+    font-size: 0.78rem;
+    color: #bbb;
+    margin-top: 0.6rem;
+  }
+  .key-hint kbd {
+    background: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 0.75rem;
+    color: #555;
+  }
+
+  /* ── Error state ── */
+  .error-box {
+    text-align: center;
+    padding: 2.5rem;
+    color: #888;
+  }
+  .error-box .err-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="feed-page">
+
+  <!-- ── City Selector ── -->
+  <div class="city-bar">
+    <label>📍 City</label>
+    <div class="city-search-wrap">
+      <input
+        type="text"
+        id="cityInput"
+        class="city-input"
+        placeholder="Search city..."
+        value="{{ city }}"
+        autocomplete="off"
+      />
+      <div class="city-dropdown" id="cityDropdown">
+        {% for c in all_cities %}
+        <div class="city-option" data-city="{{ c }}">{{ c }}</div>
+        {% endfor %}
+      </div>
+    </div>
+    <button class="city-btn" id="loadBtn" onclick="loadNews()">
+      🔍 Search
+    </button>
+  </div>
+
+  <!-- ── News Stage ── -->
+  <div class="news-stage" id="newsStage">
+    <!-- Skeleton shown while loading -->
+    <div class="skeleton-card" id="skeleton">
+      <div class="skel skel-icon"></div>
+      <div class="skel skel-stat"></div>
+      <div class="skel skel-title"></div>
+      <div class="skel skel-line"></div>
+      <div class="skel skel-line"></div>
+      <div class="skel skel-line short"></div>
+    </div>
+    <!-- Cards injected here by JS -->
+    <div id="cardsContainer"></div>
+  </div>
+
+  <!-- ── Navigation ── -->
+  <div class="nav-row" id="navRow" style="display:none;">
+    <button class="nav-btn" id="prevBtn" onclick="navigate(-1)" disabled title="Previous (← key)">◀</button>
+    <div class="nav-dots" id="navDots"></div>
+    <button class="nav-btn" id="nextBtn" onclick="navigate(1)" title="Next (→ key)">▶</button>
+  </div>
+
+  <p class="key-hint" id="keyHint" style="display:none;">
+    Use <kbd>←</kbd> <kbd>→</kbd> arrow keys or buttons to navigate
+  </p>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // ── State ────────────────────────────────────────────────
+  let cards    = [];
+  let current  = 0;
+  const ALL_CITIES = {{ all_cities | tojson }};
+
+  // ── On page load: fetch news for current city ─────────────
+  document.addEventListener("DOMContentLoaded", () => {
+    loadNews();
+    setupCitySearch();
+  });
+
+  // ── Keyboard navigation ───────────────────────────────────
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowRight") navigate(1);
+    if (e.key === "ArrowLeft")  navigate(-1);
+  });
+
+  // ── City autocomplete search ──────────────────────────────
+  function setupCitySearch() {
+    const input    = document.getElementById("cityInput");
+    const dropdown = document.getElementById("cityDropdown");
+
+    input.addEventListener("input", () => {
+      const q = input.value.toLowerCase().trim();
+      const matches = ALL_CITIES.filter(c => c.toLowerCase().includes(q));
+      renderDropdown(matches);
+      if (q && matches.length) dropdown.classList.add("open");
+      else dropdown.classList.remove("open");
+    });
+
+    input.addEventListener("focus", () => {
+      const q = input.value.toLowerCase().trim();
+      if (q) {
+        const matches = ALL_CITIES.filter(c => c.toLowerCase().includes(q));
+        renderDropdown(matches);
+        if (matches.length) dropdown.classList.add("open");
+      }
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest(".city-search-wrap")) {
+        dropdown.classList.remove("open");
+      }
+    });
+  }
+
+  function renderDropdown(cities) {
+    const dropdown = document.getElementById("cityDropdown");
+    dropdown.innerHTML = cities.slice(0, 30).map(c =>
+      `<div class="city-option" data-city="${c}" onclick="selectCity('${c}')">${c}</div>`
+    ).join("");
+  }
+
+  function selectCity(city) {
+    document.getElementById("cityInput").value = city;
+    document.getElementById("cityDropdown").classList.remove("open");
+    loadNews();
+  }
+
+  // ── Load news from API ────────────────────────────────────
+  async function loadNews() {
+    const city = document.getElementById("cityInput").value.trim();
+    if (!city) return;
+
+    // Show skeleton, hide cards
+    document.getElementById("skeleton").style.display = "block";
+    document.getElementById("cardsContainer").innerHTML = "";
+    document.getElementById("navRow").style.display    = "none";
+    document.getElementById("keyHint").style.display   = "none";
+    document.getElementById("cityDropdown").classList.remove("open");
+    document.getElementById("loadBtn").textContent = "⏳ Loading...";
+    document.getElementById("loadBtn").disabled    = true;
+
+    try {
+      const res  = await fetch(`/api/city-news?city=${encodeURIComponent(city)}`);
+      const data = await res.json();
+      cards   = data.cards || [];
+      current = 0;
+
+      if (cards.length === 0) {
+        showError("No news found for " + city + ". Try another city.");
+      } else {
+        renderCards();
+        showCard(0);
+        document.getElementById("navRow").style.display  = "flex";
+        document.getElementById("keyHint").style.display = "block";
+        buildDots();
+      }
+    } catch (err) {
+      showError("Could not load news. Please check your connection.");
+    } finally {
+      document.getElementById("skeleton").style.display = "none";
+      document.getElementById("loadBtn").textContent    = "🔍 Search";
+      document.getElementById("loadBtn").disabled       = false;
+    }
+  }
+
+  // ── Render all cards (hidden) ─────────────────────────────
+  function renderCards() {
+    const container = document.getElementById("cardsContainer");
+    container.innerHTML = cards.map((c, i) => `
+      <div class="news-card ${c.color || 'card-green'}" id="card-${i}">
+        <span class="card-num">${i + 1} / ${cards.length}</span>
+        <span class="card-icon">${c.icon || '🌿'}</span>
+        <div class="card-stat">${c.stat || ''}</div>
+        <div class="card-title">${c.title}</div>
+        <div class="card-body">${c.body}</div>
+        ${c.source ? `<div class="card-source">📰 ${c.source}</div>` : ''}
+      </div>
+    `).join("");
+  }
+
+  // ── Show specific card ────────────────────────────────────
+  function showCard(idx) {
+    document.querySelectorAll(".news-card").forEach(el => el.classList.remove("active"));
+    const el = document.getElementById("card-" + idx);
+    if (el) el.classList.add("active");
+    updateNav();
+  }
+
+  // ── Navigate prev / next ──────────────────────────────────
+  function navigate(dir) {
+    const next = current + dir;
+    if (next < 0 || next >= cards.length) return;
+    current = next;
+    showCard(current);
+    updateDots();
+  }
+
+  // ── Nav dots ──────────────────────────────────────────────
+  function buildDots() {
+    const container = document.getElementById("navDots");
+    container.innerHTML = cards.map((_, i) =>
+      `<div class="dot ${i === 0 ? 'active' : ''}" id="dot-${i}" onclick="jumpTo(${i})"></div>`
+    ).join("");
+  }
+
+  function updateDots() {
+    document.querySelectorAll(".dot").forEach((d, i) => {
+      d.classList.toggle("active", i === current);
+    });
+  }
+
+  function jumpTo(idx) {
+    current = idx;
+    showCard(current);
+    updateDots();
+  }
+
+  // ── Update button states ──────────────────────────────────
+  function updateNav() {
+    document.getElementById("prevBtn").disabled = current === 0;
+    document.getElementById("nextBtn").disabled = current === cards.length - 1;
+    updateDots();
+  }
+
+  // ── Error display ─────────────────────────────────────────
+  function showError(msg) {
+    document.getElementById("cardsContainer").innerHTML = `
+      <div class="error-box">
+        <div class="err-icon">😔</div>
+        <p>${msg}</p>
+      </div>`;
+  }
+</script>
+{% endblock %}

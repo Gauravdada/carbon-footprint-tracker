@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Your Insights — Carbon Footprint{% endblock %}
+{% block extra_css %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/feed.css') }}" />
+{% endblock %}
+
+{% block content %}
+<!--
+  insights.html
+  ────────────────────────────────────────────────────────────────
+  Second InShorts-style feed.
+  Shows the calc results + personalised reduction suggestions.
+  Data comes from app.py → insights() route.
+  ────────────────────────────────────────────────────────────────
+-->
+
+<!-- ── Result Summary Banner ──────────────────────────────────── -->
+<div class="result-banner">
+  <div class="result-grid">
+    <div class="result-item">
+      <span class="result-label">You today</span>
+      <span class="result-value">{{ "%.2f"|format(calc.total_co2) }} kg CO₂</span>
+    </div>
+    <div class="result-item">
+      <span class="result-label">Transport</span>
+      <span class="result-value">{{ "%.2f"|format(calc.transport_co2) }} kg</span>
+    </div>
+    <div class="result-item">
+      <span class="result-label">Home energy</span>
+      <span class="result-value">{{ "%.2f"|format(calc.home_co2) }} kg</span>
+    </div>
+    <div class="result-item">
+      <span class="result-label">Your family ({{ user.family_size }} people)</span>
+      <span class="result-value highlight">{{ "%.2f"|format(calc.family_co2) }} kg</span>
+    </div>
+  </div>
+
+  <!-- City comparison bar -->
+  <div class="city-compare">
+    <p>Your footprint vs {{ city }}'s daily target per person:</p>
+    <div class="compare-bar-wrap">
+      <div class="compare-bar"
+           style="width: {{ [calc.city_percentile, 100]|min }}%"
+           data-pct="{{ calc.city_percentile }}">
+      </div>
+    </div>
+    <p class="compare-pct">
+      {% if calc.city_percentile <= 50 %}
+        ✅ You are <strong>below the city average</strong>. Keep it up!
+      {% else %}
+        ⚠️ You are <strong>above the city average</strong>. Here's how to reduce:
+      {% endif %}
+    </p>
+  </div>
+</div>
+
+<!-- ── Feed Header ────────────────────────────────────────────── -->
+<div class="feed-header">
+  <h2>💡 How to reduce your footprint</h2>
+  <p>Scroll through personalised suggestions for your lifestyle.</p>
+</div>
+
+<!-- ── Suggestion Cards Feed ─────────────────────────────────── -->
+<div class="feed-container" id="feedContainer">
+
+  {% for s in suggestions %}
+  <div class="feed-card {{ s.color }}" data-index="{{ loop.index }}">
+
+    <div class="card-progress">
+      <span class="card-num">{{ loop.index }} / {{ suggestions|length }}</span>
+    </div>
+
+    <div class="card-body">
+      <div class="card-icon">{{ s.icon }}</div>
+      <h3 class="card-title">{{ s.title }}</h3>
+      <div class="card-stat">{{ s.saving }}</div>
+      <p class="card-text">{{ s.body }}</p>
+      <div class="card-action">
+        <strong>💪 Action:</strong> {{ s.action }}
+      </div>
+    </div>
+
+    {% if loop.last %}
+    <div class="card-cta">
+      <p>Ready to track your progress over time?</p>
+      <div class="cta-buttons">
+        <a href="{{ url_for('calculate') }}" class="btn-secondary">Calculate Again</a>
+        <a href="{{ url_for('dashboard') }}" class="btn-primary">View Dashboard →</a>
+      </div>
+    </div>
+    {% else %}
+    <div class="card-swipe-hint">
+      <span>↓ Scroll for next tip</span>
+    </div>
+    {% endif %}
+
+  </div><!-- /feed-card -->
+  {% endfor %}
+
+</div><!-- /feed-container -->
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/feed.js') }}"></script>
+{% endblock %}

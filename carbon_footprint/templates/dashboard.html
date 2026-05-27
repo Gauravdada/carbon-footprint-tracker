@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}My Dashboard — Carbon Footprint{% endblock %}
+
+{% block content %}
+<!--
+  dashboard.html
+  ────────────────────────────────────────────────────────────────
+  Shows user's calculation history chart and summary stats.
+  chart_labels and chart_data are passed as JSON strings from app.py.
+  Chart is rendered via Chart.js (CDN).
+  ────────────────────────────────────────────────────────────────
+-->
+
+<div class="dashboard-page">
+  <div class="dash-header">
+    <h1>📊 Your CO₂ Dashboard</h1>
+    <p>Track your progress over time, {{ user.full_name or 'there' }}.</p>
+  </div>
+
+  {% if latest %}
+  <!-- ── Summary Cards ──────────────────────────────────────── -->
+  <div class="summary-grid">
+    <div class="summary-card">
+      <div class="summary-icon">🌡️</div>
+      <div class="summary-label">Latest Daily Total</div>
+      <div class="summary-value">{{ "%.2f"|format(latest.total_co2) }} kg</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-icon">🚗</div>
+      <div class="summary-label">Transport Emissions</div>
+      <div class="summary-value">{{ "%.2f"|format(latest.transport_co2) }} kg</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-icon">🏠</div>
+      <div class="summary-label">Home Energy</div>
+      <div class="summary-value">{{ "%.2f"|format(latest.home_co2) }} kg</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-icon">👨‍👩‍👧‍👦</div>
+      <div class="summary-label">Family Total</div>
+      <div class="summary-value">{{ "%.2f"|format(latest.family_co2) }} kg</div>
+    </div>
+  </div>
+
+  <!-- ── Trend Chart ─────────────────────────────────────────── -->
+  <div class="chart-card">
+    <h3>Your CO₂ Over Time</h3>
+    <canvas id="co2Chart" height="120"></canvas>
+  </div>
+
+  <!-- ── History Table ──────────────────────────────────────── -->
+  <div class="history-card">
+    <h3>All Calculations</h3>
+    <table class="history-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Transport (kg)</th>
+          <th>Home (kg)</th>
+          <th>Total (kg)</th>
+          <th>Family (kg)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in calcs|reverse %}
+        <tr>
+          <td>{{ c.calc_date.strftime('%d %b %Y') }}</td>
+          <td>{{ "%.2f"|format(c.transport_co2) }}</td>
+          <td>{{ "%.2f"|format(c.home_co2) }}</td>
+          <td><strong>{{ "%.2f"|format(c.total_co2) }}</strong></td>
+          <td>{{ "%.2f"|format(c.family_co2) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% else %}
+  <!-- No data yet -->
+  <div class="empty-state">
+    <div class="empty-icon">🌱</div>
+    <h2>No calculations yet</h2>
+    <p>Complete your first CO₂ calculation to see your dashboard.</p>
+    <a href="{{ url_for('calculate') }}" class="btn-primary">Calculate Now →</a>
+  </div>
+  {% endif %}
+
+</div><!-- /dashboard-page -->
+
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js from CDN — renders the trend line chart -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+  /*
+   * chart_labels and chart_data are JSON strings injected by Flask.
+   * They are safe to parse because they come from your own Python code.
+   */
+  const labels = {{ chart_labels|safe }};
+  const data   = {{ chart_data|safe }};
+
+  if (labels.length > 0) {
+    const ctx = document.getElementById('co2Chart').getContext('2d');
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Total CO₂ (kg)',
+          data: data,
+          borderColor: '#2ecc71',
+          backgroundColor: 'rgba(46,204,113,0.1)',
+          tension: 0.4,
+          pointRadius: 5,
+          pointBackgroundColor: '#27ae60',
+          fill: true,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => ` ${ctx.raw.toFixed(2)} kg CO₂`
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: { display: true, text: 'kg CO₂' }
+          }
+        }
+      }
+    });
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}Calculate Your CO₂ — Carbon Footprint{% endblock %}
+{% block extra_css %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/calculate.css') }}" />
+{% endblock %}
+
+{% block content %}
+<!--
+  calculate.html
+  ────────────────────────────────────────────────────────────────
+  Activity input form.
+  All inputs POST to /calculate in app.py, which:
+    1. Validates and saves ActivityLog to SQL Server
+    2. Computes CO2 and saves Calculation to SQL Server
+    3. Redirects to /insights
+  ────────────────────────────────────────────────────────────────
+-->
+
+<div class="calc-page">
+  <div class="calc-header">
+    <h1>🧮 Calculate Your CO₂</h1>
+    <p>Enter your activities for <strong id="selectedDate">{{ today }}</strong>.
+       We'll show your footprint in real time.</p>
+  </div>
+
+  <form action="{{ url_for('calculate') }}" method="POST"
+        id="calcForm" class="calc-form">
+
+    <!-- Date picker -->
+    <div class="form-section">
+      <label for="log_date">📅 Date of Activity</label>
+      <input type="date" id="log_date" name="log_date"
+             value="{{ today }}" max="{{ today }}" required
+             onchange="document.getElementById('selectedDate').textContent = this.value" />
+    </div>
+
+    <!-- ══ TRANSPORT SECTION ════════════════════════════════════ -->
+    <div class="form-section-card">
+      <h3>🚗 Transport</h3>
+      <p class="section-hint">Enter kilometres travelled <em>today</em> by each mode.</p>
+
+      <div class="input-grid">
+
+        <div class="form-group">
+          <label for="car_petrol_km">Petrol Car (km)</label>
+          <input type="number" id="car_petrol_km" name="car_petrol_km"
+                 min="0" step="0.1" value="0" placeholder="0"
+                 class="co2-input" data-factor="0.21" />
+          <small>0.21 kg CO₂/km</small>
+        </div>
+
+        <div class="form-group">
+          <label for="car_diesel_km">Diesel Car (km)</label>
+          <input type="number" id="car_diesel_km" name="car_diesel_km"
+                 min="0" step="0.1" value="0" placeholder="0"
+                 class="co2-input" data-factor="0.17" />
+          <small>0.17 kg CO₂/km</small>
+        </div>
+
+        <div class="form-group">
+          <label for="two_wheeler_km">Two-Wheeler / Scooter (km)</label>
+          <input type="number" id="two_wheeler_km" name="two_wheeler_km"
+                 min="0" step="0.1" value="0" placeholder="0"
+                 class="co2-input" data-factor="0.08" />
+          <small>0.08 kg CO₂/km</small>
+        </div>
+
+        <div class="form-group">
+          <label for="public_transport_km">Bus / Metro (km)</label>
+          <input type="number" id="public_transport_km" name="public_transport_km"
+                 min="0" step="0.1" value="0" placeholder="0"
+                 class="co2-input" data-factor="0.04" />
+          <small>0.04 kg CO₂/km</small>
+        </div>
+
+        <div class="form-group">
+          <label for="air_travel_km">Air Travel (km)</label>
+          <input type="number" id="air_travel_km" name="air_travel_km"
+                 min="0" step="1" value="0" placeholder="0"
+                 class="co2-input" data-factor="0.255" />
+          <small>0.255 kg CO₂/km</small>
+        </div>
+
+      </div><!-- /input-grid -->
+    </div><!-- /transport section -->
+
+    <!-- ══ HOME ENERGY SECTION ══════════════════════════════════ -->
+    <div class="form-section-card">
+      <h3>🏠 Home Energy</h3>
+      <p class="section-hint">Enter today's estimated usage (divide your monthly bill by 30).</p>
+
+      <div class="input-grid">
+
+        <div class="form-group">
+          <label for="electricity_kwh">Electricity (kWh)</label>
+          <input type="number" id="electricity_kwh" name="electricity_kwh"
+                 min="0" step="0.1" value="0" placeholder="0"
+                 class="co2-input" data-factor="0.82" />
+          <small>0.82 kg CO₂/kWh (India grid)</small>
+        </div>
+
+        <div class="form-group">
+          <label for="lpg_kg">LPG Cooking Gas (kg)</label>
+          <input type="number" id="lpg_kg" name="lpg_kg"
+                 min="0" step="0.1" value="0" placeholder="0"
+                 class="co2-input" data-factor="2.98" />
+          <small>2.98 kg CO₂/kg LPG</small>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══ LIVE CO2 METER ════════════════════════════════════════ -->
+    <div class="co2-meter-card">
+      <h3>⚡ Live CO₂ Estimate</h3>
+      <div class="meter-display">
+        <span id="liveCo2" class="meter-number">0.00</span>
+        <span class="meter-unit">kg CO₂ today</span>
+      </div>
+      <div class="meter-bar-wrap">
+        <div id="meterBar" class="meter-bar"></div>
+      </div>
+      <p id="meterLabel" class="meter-label">Enter your activities above.</p>
+      <p class="family-note">
+        👨‍👩‍👧‍👦 Your family of {{ user.family_size }}:
+        <strong id="familyCo2">0.00</strong> kg CO₂/day
+      </p>
+    </div>
+
+    <!-- Submit -->
+    <button type="submit" class="btn-primary btn-full btn-large" id="submitBtn">
+      Save & See My Insights →
+    </button>
+
+  </form>
+</div><!-- /calc-page -->
+
+{% endblock %}
+
+{% block extra_js %}
+<!--
+  Pass family size from Jinja2 → JavaScript as a JS variable.
+  This is the standard pattern for passing Python data to JS in Flask.
+-->
+<script>
+  const FAMILY_SIZE = {{ user.family_size }};
+</script>
+<script src="{{ url_for('static', filename='js/calculate.js') }}"></script>
+{% endblock %}
