@@ -516,7 +516,7 @@ def city_news():
 
 def awareness_cards(city):
     """
-    AI-generated awareness cards — always shown.
+    AI-generated awareness cards always — always shown.
     City-specific, environment-focused, alarming and educational.
     """
     return [
